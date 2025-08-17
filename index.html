@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DEEPSEA – 72時間後に届くSNS</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; margin: 24px; color: #e6f0ff; background: radial-gradient(1200px 600px at 50% -100px, #0c2a52 0%, #041220 60%, #01070d 100%); }
+    h1 { margin: 0 0 4px; font-weight: 700; letter-spacing: 0.02em; }
+    .sub { opacity: 0.85; margin: 0 0 24px; }
+    .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin: 12px 0; }
+    button { background: #1b5cff; color: white; border: none; border-radius: 10px; padding: 10px 14px; font-size: 15px; }
+    button.ghost { background: transparent; border: 1px solid rgba(255,255,255,0.25); }
+    textarea { width: 100%; min-height: 120px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #e6f0ff; padding: 10px; font-size: 15px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .muted { opacity: 0.75; font-size: 13px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .pill { font-size: 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 999px; padding: 4px 8px; }
+  </style>
+</head>
+<body>
+  <h1>DEEPSEA</h1>
+  <p class="sub">メンタルの海溝を観に行こう – 72時間後に届くSNS（ローカル版）</p>
+
+  <div class="card">
+    <p style="margin:0 0 8px;">言葉を潜らせる（72時間後に浮上）</p>
+    <textarea id="content" placeholder="やあ。君は今どこまで潜ってる？"></textarea>
+    <div class="row" style="margin-top:10px;">
+      <button id="post">潜航させる</button>
+      <span id="hint" class="muted"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <p style="margin:0;">浮上ログ（解禁済みのみ・この端末限定）</p>
+      <button id="refresh" class="ghost">更新</button>
+    </div>
+    <div id="posts"></div>
+    <p id="empty" class="muted" style="display:none;">まだ何も浮上していません。</p>
+    <p class="muted">※データはこの端末の中（localStorage）に保存されます。</p>
+  </div>
+
+  <script>
+    // ★設定：解禁までの日数（デフォ3日）
+    const DAYS = 3;
+
+    const $ = id => document.getElementById(id);
+
+    // ストレージキー
+    const KEY = "deepsea_items_v1"; // [{content, unlock, created}...]
+
+    // 保存・読み込み
+    function loadItems(){
+      try { return JSON.parse(localStorage.getItem(KEY)) || []; }
+      catch { return []; }
+    }
+    function saveItems(items){
+      localStorage.setItem(KEY, JSON.stringify(items));
+    }
+
+    // 投稿
+    $("post").onclick = () => {
+      const content = $("content").value.trim();
+      if (!content) { alert("空っぽだよ"); return; }
+      const now = Date.now();
+      const unlock = now + DAYS*24*60*60*1000;
+      const items = loadItems();
+      items.push({ content, unlock, created: now });
+      saveItems(items);
+      $("content").value = "";
+      $("hint").textContent = `潜航完了。解禁予定：${new Date(unlock).toLocaleString()}`;
+      render();
+      alert("潜らせたよ。72時間後に浮上します。");
+    };
+
+    // 描画
+    function render(){
+      const now = Date.now();
+      const all = loadItems();
+      const unlocked = all.filter(x => x.unlock <= now).sort((a,b)=>b.unlock-a.unlock);
+      const wrap = $("posts");
+      wrap.innerHTML = "";
+      if (unlocked.length === 0) { $("empty").style.display = ""; return; }
+      $("empty").style.display = "none";
+      unlocked.forEach(p => {
+        const div = document.createElement("div"); div.className = "card";
+        const when = new Date(p.unlock).toLocaleString();
+        const since = timeSince(p.created);
+        div.innerHTML = `
+          <div class="muted mono">${when} <span class="pill">${since} 潜航</span></div>
+          <div style="white-space:pre-wrap;margin-top:6px">${escapeHTML(p.content)}</div>
+        `;
+        wrap.appendChild(div);
+      });
+    }
+
+    $("refresh").onclick = render;
+    setInterval(render, 60*1000);
+    render();
+
+    function escapeHTML(s){ return s.replace(/[&<>"']/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
+    function timeSince(ts){
+      const sec = Math.floor((Date.now()-ts)/1000);
+      if (sec<60) return `${sec}s`;
+      const m = Math.floor(sec/60); if (m<60) return `${m}m`;
+      const h = Math.floor(m/60); if (h<24) return `${h}h`;
+      const d = Math.floor(h/24); return `${d}d`;
+    }
+  </script>
+</body>
+</html>
